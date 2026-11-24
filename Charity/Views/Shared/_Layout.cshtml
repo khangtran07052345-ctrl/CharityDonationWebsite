@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
@@ -11,7 +12,6 @@
 </head>
 
 <body class="d-flex flex-column min-vh-100">
-
 
     <!-- ================================
          CHARITY HEADER
@@ -40,12 +40,12 @@
 
                 <!-- Logo -->
                 @Html.ActionLink(
-                                        "CHARITY",
-                                        "Index",
-                                        "Home",
-                                        new { area = "" },
-                                        new { @class = "navbar-brand charity-brand" }
-                                    )
+                         "CHARITY",
+                         "Index",
+                         "Home",
+                         new { area = "" },
+                         new { @class = "navbar-brand charity-brand" }
+                     )
 
                 <!-- Nút menu mobile -->
                 <button class="navbar-toggler charity-toggler"
@@ -64,99 +64,123 @@
                 <div class="collapse navbar-collapse" id="mainNavbar">
 
                     <!-- Menu chính -->
-
                     <ul class="navbar-nav charity-nav mx-auto">
 
                         <li class="nav-item">
                             @Html.ActionLink(
-                                          "Trang chủ",
-                                          "Index",
-                                          "Home",
-                                          new { area = "" },
-                                          new { @class = "nav-link" }
-                                      )
+                                     "Trang chủ",
+                                     "Index",
+                                     "Home",
+                                     new { area = "" },
+                                     new { @class = "nav-link" }
+                                 )
                         </li>
 
                         <li class="nav-item">
                             @Html.ActionLink(
-                                          "Chiến dịch",
-                                          "Index",
-                                          "Campaign",
-                                          new { area = "" },
-                                          new { @class = "nav-link" }
-                                      )
+                                     "Chiến dịch",
+                                     "Index",
+                                     "Campaign",
+                                     new { area = "" },
+                                     new { @class = "nav-link" }
+                                 )
                         </li>
 
                         <li class="nav-item">
                             @Html.ActionLink(
-                                          "Giới thiệu",
-                                          "GioiThieu",
-                                          "Home",
-                                          new { area = "" },
-                                          new { @class = "nav-link" }
-                                      )
+                                     "Giới thiệu",
+                                     "GioiThieu",
+                                     "Home",
+                                     new { area = "" },
+                                     new { @class = "nav-link" }
+                                 )
                         </li>
 
                         <li class="nav-item">
                             @Html.ActionLink(
-                                          "Liên hệ",
-                                          "LienHe",
-                                          "Home",
-                                          new { area = "" },
-                                          new { @class = "nav-link" }
-                                      )
+                                     "Liên hệ",
+                                     "LienHe",
+                                     "Home",
+                                     new { area = "" },
+                                     new { @class = "nav-link" }
+                                 )
                         </li>
 
+                        <!-- MENU ADMIN -->
                         @if (Session["UserId"] != null &&
                              Session["Role"] != null &&
                              Session["Role"].ToString() == "Admin")
                         {
+                            var currentController =
+                                Convert.ToString(
+                                    ViewContext.RouteData.Values["controller"]
+                                );
+
                             <li class="nav-item">
-                                @Html.ActionLink(
-                                              "Quản trị",
-                                              "Index",
-                                              "Admin",
-                                              new { area = "" },
-                                              new { @class = "nav-link" }
-                                          )
+
+                                @if (string.Equals(
+                                    currentController,
+                                    "Admin",
+                                    StringComparison.OrdinalIgnoreCase))
+                                {
+                                    @Html.ActionLink(
+                                             "Bảng điều khiển",
+                                             "Index",
+                                             "Admin",
+                                             new { area = "" },
+                                             new { @class = "nav-link" }
+                                         )
+                                }
+                                else
+                                {
+                                    @Html.ActionLink(
+                                             "Quản trị",
+                                             "Index",
+                                             "Admin",
+                                             new { area = "" },
+                                             new { @class = "nav-link" }
+                                         )
+                                }
+
                             </li>
                         }
 
                     </ul>
+
                     <!-- Khu vực tài khoản -->
                     <div class="charity-account">
 
                         @if (Session["UserId"] != null)
                         {
                             <span class="charity-welcome">
-                                Xin chào, @Session["FullName"]
+                                Xin chào nhà mình ạ!, @Session["FullName"]
                             </span>
 
                             @Html.ActionLink(
-                                                         "Đăng xuất",
-                                                         "Logout",
-                                                         "Account",
-                                                         new { area = "" },
-                                                         new { @class = "charity-login-link" }
-                                                     )
+                                     "Đăng xuất",
+                                     "Logout",
+                                     "Account",
+                                     new { area = "" },
+                                     new { @class = "charity-login-link" }
+                                 )
                         }
                         else
                         {
                             @Html.ActionLink(
-                                                         "Đăng nhập",
-                                                         "Login",
-                                                         "Account",
-                                                         new { area = "" },
-                                                         new { @class = "charity-login-link" }
-                                                     )
+                                     "Đăng nhập",
+                                     "Login",
+                                     "Account",
+                                     new { area = "" },
+                                     new { @class = "charity-login-link" }
+                                 )
 
                             @Html.ActionLink(
-                                                         "Tham gia ngay",
-                                                         "Register",
-                                                         "Account",
-                                                         new { area = "" },
-                                                         new { @class = "charity-register-btn" }
-                                                     )
+                                     "Tham gia ngay",
+                                     "Register",
+                                     "Account",
+                                     new { area = "" },
+                                     new { @class = "charity-register-btn" }
+                                 )
                         }
 
                     </div>
@@ -175,7 +199,6 @@
         @RenderBody()
     </div>
 
-    <!-- Chân trang -->
     <!-- ================================
          CHARITY FOOTER
     ================================= -->
@@ -216,26 +239,26 @@
 
                         <li>
                             @Html.ActionLink(
-                                               "Trang chủ", "Index", "Home"
-                                           )
+                                     "Trang chủ", "Index", "Home"
+                                 )
                         </li>
 
                         <li>
                             @Html.ActionLink(
-                                               "Chiến dịch", "Index", "Campaign"
-                                           )
+                                     "Chiến dịch", "Index", "Campaign"
+                                 )
                         </li>
 
                         <li>
                             @Html.ActionLink(
-                                               "Giới thiệu", "GioiThieu", "Home"
-                                           )
+                                     "Giới thiệu", "GioiThieu", "Home"
+                                 )
                         </li>
 
                         <li>
                             @Html.ActionLink(
-                                               "Liên hệ", "LienHe", "Home"
-                                           )
+                                     "Liên hệ", "LienHe", "Home"
+                                 )
                         </li>
 
                     </ul>
@@ -280,12 +303,12 @@
                     </p>
 
                     @Html.ActionLink(
-                                       "Liên hệ với chúng tôi →",
-                                       "LienHe",
-                                       "Home",
-                                       new { area = "" },
-                                       new { @class = "footer-contact-link" }
-                                   )
+                             "Liên hệ với chúng tôi →",
+                             "LienHe",
+                             "Home",
+                             new { area = "" },
+                             new { @class = "footer-contact-link" }
+                         )
 
                 </div>
 
@@ -312,7 +335,6 @@
     </footer>
 
     <!-- END CHARITY FOOTER -->
-
 
     @Scripts.Render("~/bundles/jquery")
     @Scripts.Render("~/bundles/bootstrap")

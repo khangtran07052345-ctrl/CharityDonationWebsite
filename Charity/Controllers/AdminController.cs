@@ -974,7 +974,7 @@ namespace Charity.Controllers
             // Chỉ đổi mật khẩu khi Admin nhập mật khẩu mới.
             if (!string.IsNullOrWhiteSpace(Password))
             {
-                user.PasswordHash = Password;
+                user.PasswordHash = PasswordHelper.Hash(Password);
             }
 
             database.SaveChanges();
