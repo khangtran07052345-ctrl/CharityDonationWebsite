@@ -1,17 +1,47 @@
-﻿@{
+﻿
+@{
     ViewBag.Title = "Đăng ký";
     Layout = "~/Views/Shared/_AuthLayout.cshtml";
 }
+
 @section styles {
     <link href="@Url.Content("~/Content/charity-system.css")"
           rel="stylesheet" />
+
+    <style>
+        .charity-validation-error {
+            color: #ff6b6b;
+            font-size: 13px;
+            display: block;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        .charity-validation-summary {
+            color: #ff6b6b;
+            background: rgba(255, 80, 80, 0.10);
+            border: 1px solid rgba(255, 80, 80, 0.35);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .charity-auth-form input {
+            width: 100%;
+        }
+    </style>
 }
 
 <div class="charity-auth-background"></div>
 
 <div class="charity-auth-page">
+
     <div class="charity-auth-intro">
-        <div class="eyebrow">Tham gia cộng đồng CHARITY</div>
+
+        <div class="eyebrow">
+            Tham gia cộng đồng CHARITY
+        </div>
 
         <h1>
             Tạo tài khoản<br />
@@ -23,46 +53,101 @@
             đồng hành cùng những hoàn cảnh khó khăn
             và lan tỏa giá trị tốt đẹp.
         </p>
+
     </div>
 
     <div class="charity-auth-form">
+
         <h2>Tạo tài khoản</h2>
+
         <p class="charity-auth-subtitle">
             Hãy trở thành một phần của cộng đồng CHARITY!
         </p>
 
-        <form method="post" action="@Url.Action("Register", "Account")">
+        <form method="post"
+              action="@Url.Action("Register", "Account")">
+
             @Html.AntiForgeryToken()
 
-            <label for="FullName">Họ và tên</label>
-            <input type="text" id="FullName" name="FullName"
-                   class="form-control" placeholder="Nhập họ và tên"
+            @* Thông báo lỗi chung *@
+            @if (ViewBag.Error != null)
+            {
+                <div class="charity-validation-summary">
+                    @ViewBag.Error
+                </div>
+            }
+
+            @* Họ và tên *@
+            <label for="FullName">
+                Họ và tên
+            </label>
+
+            <input type="text"
+                   id="FullName"
+                   name="FullName"
+                   class="form-control"
+                   placeholder="Nhập họ và tên"
+                   value="@Request["FullName"]"
                    required />
 
-            <label for="Email">Địa chỉ email</label>
-            <input type="email" id="Email" name="Email"
-                   class="form-control" placeholder="Nhập địa chỉ email"
+            @* Email *@
+            <label for="Email">
+                Địa chỉ email
+            </label>
+
+            <input type="email"
+                   id="Email"
+                   name="Email"
+                   class="form-control"
+                   placeholder="Nhập địa chỉ email"
+                   value="@Request["Email"]"
                    required />
 
-            <label for="Password">Mật khẩu</label>
-            <input type="password" id="Password" name="Password"
-                   class="form-control" placeholder="Ít nhất 8 ký tự"
-                   minlength="8" required />
+            @if (ViewBag.EmailError != null)
+            {
+                <span class="charity-validation-error">
+                    @ViewBag.EmailError
+                </span>
+            }
 
-            <label for="ConfirmPassword">Xác nhận mật khẩu</label>
-            <input type="password" id="ConfirmPassword"
-                   name="ConfirmPassword" class="form-control"
+            @* Mật khẩu *@
+            <label for="Password">
+                Mật khẩu
+            </label>
+
+            <input type="password"
+                   id="Password"
+                   name="Password"
+                   class="form-control"
+                   placeholder="Ít nhất 8 ký tự"
+                   minlength="8"
+                   required />
+
+            @* Xác nhận mật khẩu *@
+            <label for="ConfirmPassword">
+                Xác nhận mật khẩu
+            </label>
+
+            <input type="password"
+                   id="ConfirmPassword"
+                   name="ConfirmPassword"
+                   class="form-control"
                    placeholder="Nhập lại mật khẩu"
-                   minlength="8" required />
+                   minlength="8"
+                   required />
 
+            @* Nút đăng ký *@
             <button type="submit" class="btn-charity">
                 Tạo tài khoản
             </button>
+
         </form>
 
         <p class="charity-auth-switch">
             Đã có tài khoản?
             @Html.ActionLink("Đăng nhập", "Login", "Account")
         </p>
+
     </div>
+
 </div>
