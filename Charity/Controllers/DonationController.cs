@@ -13,7 +13,7 @@ namespace Charity.Controllers
     {
         private readonly CharityDBEntities db = new CharityDBEntities();
 
-        // ===== CẤU HÌNH TÀI KHOẢN NHẬN TIỀN DEMO =====
+        // ===== TAI KHOAN NHAN TIEN DEMO =====
         private const string BankCode = "MB";
         private const string BankName = "MB Bank";
         private const string BankAccountNo = "0123456789";
@@ -35,7 +35,7 @@ namespace Charity.Controllers
         };
 
         // =============================================
-        // GET: TRANG QUYÊN GÓP
+        // GET: TRANG QUYEN GOP
         // =============================================
         [HttpGet]
         public ActionResult Create(int campaignId, string type = "Money")
@@ -66,7 +66,7 @@ namespace Charity.Controllers
                 CampaignId = campaignId,
                 Amount = 100000m,
                 IsAnonymous = false,
-                DonationType = (type == "InKind") ? "InKind" : "Money",
+                DonationType = type == "InKind" ? "InKind" : "Money",
                 PaymentMethod = MoneyMethods[0],
                 TransactionCode = NewTransferCode(campaignId)
             };
@@ -77,7 +77,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // POST: XÁC NHẬN QUYÊN GÓP
+        // POST: XAC NHAN QUYEN GOP
         // =============================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -98,6 +98,7 @@ namespace Charity.Controllers
             if (campaign == null)
                 return HttpNotFound();
 
+            // Kiem tra trang thai va thoi gian chien dich
             string error = GetDonationError(campaign);
 
             if (error != null)
@@ -134,13 +135,45 @@ namespace Charity.Controllers
                 return View(donation);
             }
 
+            // Kiem tra lai muc tieu truoc khi luu
+            // Chi ap dung cho quyen gop tien
+            if (!isInKind)
+            {
+                decimal raisedAmount = GetRaisedAmount(campaign.Id);
+                decimal remainingAmount = campaign.TargetAmount - raisedAmount;
+
+                if (remainingAmount <= 0)
+                {
+                    TempData["Error"] =
+                        "Chiến dịch đã đạt mục tiêu, không nhận thêm quyên góp.";
+
+                    return RedirectToAction(
+                        "Details",
+                        "Campaign",
+                        new { id = campaign.Id }
+                    );
+                }
+
+                if (donation.Amount > remainingAmount)
+                {
+                    ModelState.AddModelError(
+                        "Amount",
+                        "Số tiền quyên góp vượt quá số tiền còn thiếu của chiến dịch. Số tiền tối đa có thể quyên góp là " +
+                        remainingAmount.ToString("N0") + " đ."
+                    );
+
+                    PrepareViewBag(campaign);
+                    return View(donation);
+                }
+            }
+
             donation.UserId = Convert.ToInt32(Session["UserId"]);
             donation.DonatedAt = DateTime.Now;
 
             donation.DonationType = isInKind ? "InKind" : "Money";
 
             // =============================================
-            // XỬ LÝ QUYÊN GÓP HIỆN VẬT
+            // XU LY QUYEN GOP HIEN VAT
             // =============================================
             if (isInKind)
             {
@@ -194,7 +227,7 @@ namespace Charity.Controllers
             }
 
             // =============================================
-            // XỬ LÝ QUYÊN GÓP TIỀN
+            // XU LY QUYEN GOP TIEN
             // =============================================
             else
             {
@@ -208,7 +241,7 @@ namespace Charity.Controllers
                         NewTransferCode(donation.CampaignId);
                 }
 
-                // Quyên góp tiền theo luồng demo hiện tại
+                // Cho admin xac nhan
                 donation.Status = 0;
 
                 donation.ItemName = null;
@@ -223,7 +256,7 @@ namespace Charity.Controllers
             }
 
             // =============================================
-            // LƯU QUYÊN GÓP VÀO DATABASE
+            // LUU QUYEN GOP
             // =============================================
             try
             {
@@ -232,12 +265,18 @@ namespace Charity.Controllers
             }
             catch (Exception)
             {
-                TempData["Error"] = "Không thể lưu khoản quyên góp lúc này. Vui lòng thử lại sau.";
-                return RedirectToAction("Details", "Campaign", new { id = campaign.Id });
+                TempData["Error"] =
+                    "Không thể lưu khoản quyên góp lúc này. Vui lòng thử lại sau.";
+
+                return RedirectToAction(
+                    "Details",
+                    "Campaign",
+                    new { id = campaign.Id }
+                );
             }
 
             // =============================================
-            // CẬP NHẬT TIẾN ĐỘ CHIẾN DỊCH
+            // THONG BAO KET QUA
             // =============================================
             if (!isInKind)
             {
@@ -263,7 +302,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // KIỂM TRA QUYÊN GÓP TIỀN
+        // KIEM TRA QUYEN GOP TIEN
         // =============================================
         private void ValidateMoney(Donation d)
         {
@@ -290,7 +329,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // KIỂM TRA QUYÊN GÓP HIỆN VẬT
+        // KIEM TRA QUYEN GOP HIEN VAT
         // =============================================
         private void ValidateInKind(Donation d, string donationLetter)
         {
@@ -416,7 +455,21 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // CHUẨN BỊ DỮ LIỆU CHO VIEW
+        // TINH TONG TIEN DA QUYEN GOP HOP LE
+        // =============================================
+        private decimal GetRaisedAmount(int campaignId)
+        {
+            return db.Donations
+                .Where(d =>
+                    d.CampaignId == campaignId &&
+                    d.Status == 1 &&
+                    d.DonationType == "Money")
+                .Select(d => (decimal?)d.Amount)
+                .Sum() ?? 0m;
+        }
+
+        // =============================================
+        // CHUAN BI DU LIEU CHO VIEW
         // =============================================
         private void PrepareViewBag(Campaign campaign)
         {
@@ -431,7 +484,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // TẠO MÃ GIAO DỊCH
+        // TAO MA GIAO DICH
         // =============================================
         private string NewTransferCode(int campaignId)
         {
@@ -454,7 +507,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // KIỂM TRA ĐIỀU KIỆN CHIẾN DỊCH
+        // KIEM TRA DIEU KIEN CHIEN DICH
         // =============================================
         private string GetDonationError(Campaign campaign)
         {
@@ -474,12 +527,7 @@ namespace Charity.Controllers
                 return "Chiến dịch đã hết hạn, không thể nhận quyên góp.";
             }
 
-            decimal raisedAmount = db.Donations
-                .Where(d =>
-                    d.CampaignId == campaign.Id &&
-                    d.Status == 1)
-                .Select(d => (decimal?)d.Amount)
-                .Sum() ?? 0m;
+            decimal raisedAmount = GetRaisedAmount(campaign.Id);
 
             if (raisedAmount >= campaign.TargetAmount)
             {
@@ -490,7 +538,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // LỊCH SỬ QUYÊN GÓP CÓ PHÂN TRANG
+        // LICH SU QUYEN GOP
         // =============================================
         [SessionAuthorize(Roles = "User")]
         public ActionResult History(int page = 1)
@@ -525,7 +573,7 @@ namespace Charity.Controllers
         }
 
         // =============================================
-        // GIẢI PHÓNG DATABASE
+        // GIAI PHONG DATABASE
         // =============================================
         protected override void Dispose(bool disposing)
         {
