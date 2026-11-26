@@ -18,7 +18,8 @@ namespace Charity.Controllers
     [SessionAuthorize(Roles = "Admin")]
     public class AdminController : Controller
     {
-        private readonly CharityDBEntities database = new CharityDBEntities();
+        private readonly CharityDBEntities database =
+            new CharityDBEntities();
 
         // =========================
         // KIỂM TRA QUYỀN ADMIN
@@ -167,7 +168,6 @@ namespace Charity.Controllers
             ValidateCampaign(input);
             ValidateCampaignImage(campaignImage);
 
-
             if (ModelState.IsValid)
             {
                 var campaign = new Campaign();
@@ -181,16 +181,35 @@ namespace Charity.Controllers
                 campaign.Status = input.Status;
                 campaign.CreatedAt = DateTime.Now;
 
+                // Lưu ảnh trực tiếp vào SQL Server
                 if (campaignImage != null &&
                     campaignImage.ContentLength > 0)
                 {
-                    campaign.ImageUrl = SaveCampaignImage(campaignImage);
+                    campaign.ImageData =
+                        ReadCampaignImage(campaignImage);
+
+                    campaign.ImageContentType =
+                        GetCampaignImageContentType(campaignImage);
                 }
 
                 database.Campaigns.Add(campaign);
                 database.SaveChanges();
 
-                TempData["Success"] = "Đã tạo chiến dịch thành công.";
+                // Tạo đường dẫn hiển thị ảnh sau khi đã có Id
+                if (campaign.ImageData != null &&
+                    campaign.ImageData.Length > 0)
+                {
+                    campaign.ImageUrl = Url.Action(
+                        "Show",
+                        "CampaignImage",
+                        new { id = campaign.Id }
+                    );
+
+                    database.SaveChanges();
+                }
+
+                TempData["Success"] =
+                    "Đã tạo chiến dịch thành công.";
 
                 return RedirectToAction("Campaigns");
             }
@@ -245,8 +264,6 @@ namespace Charity.Controllers
             ValidateCampaign(input);
             ValidateCampaignImage(campaignImage);
 
-            input.ImageUrl = campaign.ImageUrl;
-
             if (ModelState.IsValid)
             {
                 campaign.CategoryId = input.CategoryId;
@@ -257,15 +274,40 @@ namespace Charity.Controllers
                 campaign.EndDate = input.EndDate;
                 campaign.Status = input.Status;
 
+                // Chỉ thay ảnh khi Admin thực sự chọn ảnh mới.
+                // Nếu không chọn, ảnh cũ được giữ nguyên.
                 if (campaignImage != null &&
                     campaignImage.ContentLength > 0)
                 {
-                    campaign.ImageUrl = SaveCampaignImage(campaignImage);
+                    campaign.ImageData =
+                        ReadCampaignImage(campaignImage);
+
+                    campaign.ImageContentType =
+                        GetCampaignImageContentType(campaignImage);
+
+                    campaign.ImageUrl = Url.Action(
+                        "Show",
+                        "CampaignImage",
+                        new { id = campaign.Id }
+                    );
                 }
+                else if (campaign.ImageData != null &&
+                         campaign.ImageData.Length > 0)
+                {
+                    // Ảnh đã lưu trong SQL Server
+                    campaign.ImageUrl = Url.Action(
+                        "Show",
+                        "CampaignImage",
+                        new { id = campaign.Id }
+                    );
+                }
+                // Nếu ImageData chưa có, giữ nguyên ImageUrl cũ
+                // để ảnh cũ trong Content vẫn có thể được sử dụng.
 
                 database.SaveChanges();
 
-                TempData["Success"] = "Đã cập nhật chiến dịch.";
+                TempData["Success"] =
+                    "Đã cập nhật chiến dịch.";
 
                 return RedirectToAction("Campaigns");
             }
@@ -331,7 +373,11 @@ namespace Charity.Controllers
         // =========================
         // DANH SÁCH QUYÊN GÓP
         // =========================
-        public ActionResult Donations(string keyword, int? status, string type, int page = 1)
+        public ActionResult Donations(
+            string keyword,
+            int? status,
+            string type,
+            int page = 1)
         {
             var denied = RequireAdmin();
             if (denied != null) return denied;
@@ -368,7 +414,11 @@ namespace Charity.Controllers
                      .Sum() ?? 0m;
 
             if (page < 1) page = 1;
-            return View(query.OrderByDescending(d => d.DonatedAt).ToPagedList(page, 10));
+
+            return View(
+                query.OrderByDescending(d => d.DonatedAt)
+                     .ToPagedList(page, 10)
+            );
         }
 
         // =========================
@@ -395,7 +445,7 @@ namespace Charity.Controllers
         }
 
         // =========================
-        // XÁC NHẬN QUYÊN GÓP HIỆN VẬT
+        // XÁC NHẬN QUYÊN GÓP
         // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -405,25 +455,33 @@ namespace Charity.Controllers
             if (denied != null) return denied;
 
             var donation = database.Donations.Find(id);
+
             if (donation == null)
                 return HttpNotFound();
 
             if (donation.Status != 0)
             {
-                TempData["Error"] = "Khoản quyên góp này đã được xử lý trước đó.";
+                TempData["Error"] =
+                    "Khoản quyên góp này đã được xử lý trước đó.";
+
                 return RedirectToAction("Donations");
             }
 
             using (var tx = database.Database.BeginTransaction())
             {
-                var campaign = database.Campaigns.Find(donation.CampaignId);
-                bool isMoney = donation.DonationType == "Money";
+                var campaign =
+                    database.Campaigns.Find(donation.CampaignId);
 
-                // Chiến dịch đã hoàn thành/đóng thì không duyệt thêm tiền
-                if (isMoney && campaign != null && (campaign.Status ?? 0) != 0)
+                bool isMoney =
+                    donation.DonationType == "Money";
+
+                if (isMoney &&
+                    campaign != null &&
+                    (campaign.Status ?? 0) != 0)
                 {
                     TempData["Error"] =
                         "Chiến dịch đã đạt mục tiêu hoặc đã đóng. Hãy từ chối khoản này.";
+
                     return RedirectToAction("Donations");
                 }
 
@@ -433,7 +491,9 @@ namespace Charity.Controllers
                 if (isMoney && campaign != null)
                 {
                     decimal raised = database.Donations
-                        .Where(d => d.CampaignId == campaign.Id && d.Status == 1)
+                        .Where(d =>
+                            d.CampaignId == campaign.Id &&
+                            d.Status == 1)
                         .Select(d => (decimal?)d.Amount)
                         .Sum() ?? 0m;
 
@@ -448,7 +508,9 @@ namespace Charity.Controllers
             }
 
             TempData["Success"] =
-                "Đã xác nhận khoản quyên góp " + donation.TransactionCode + ".";
+                "Đã xác nhận khoản quyên góp " +
+                donation.TransactionCode + ".";
+
             return RedirectToAction("Donations");
         }
 
@@ -479,6 +541,10 @@ namespace Charity.Controllers
 
             return RedirectToAction("Donations");
         }
+
+        // =========================
+        // SỬA QUYÊN GÓP - GET
+        // =========================
         [HttpGet]
         public ActionResult EditDonation(int? id)
         {
@@ -498,21 +564,29 @@ namespace Charity.Controllers
 
             if (donation.Status != 0)
             {
-                TempData["Error"] = "Chỉ được sửa khoản quyên góp đang chờ xác nhận.";
+                TempData["Error"] =
+                    "Chỉ được sửa khoản quyên góp đang chờ xác nhận.";
+
                 return RedirectToAction("Donations");
             }
 
             return View(donation);
         }
-        // =========================
-        //  Sửa Donation (chỉ khoản đang chờ)
-        // =========================
 
+        // =========================
+        // SỬA QUYÊN GÓP - POST
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult EditDonation(
-            int Id, decimal? Amount, string Message, bool IsAnonymous,
-            string ItemName, decimal? Quantity, string Unit, string ContactPhone)
+            int Id,
+            decimal? Amount,
+            string Message,
+            bool IsAnonymous,
+            string ItemName,
+            decimal? Quantity,
+            string Unit,
+            string ContactPhone)
         {
             var denied = RequireAdmin();
             if (denied != null) return denied;
@@ -527,31 +601,59 @@ namespace Charity.Controllers
 
             if (donation.Status != 0)
             {
-                TempData["Error"] = "Chỉ được sửa khoản quyên góp đang chờ xác nhận.";
+                TempData["Error"] =
+                    "Chỉ được sửa khoản quyên góp đang chờ xác nhận.";
+
                 return RedirectToAction("Donations");
             }
 
-            bool isInKind = donation.DonationType == "InKind";
+            bool isInKind =
+                donation.DonationType == "InKind";
 
             if (Message != null && Message.Length > 500)
-                ModelState.AddModelError("Message", "Lời nhắn tối đa 500 ký tự.");
+                ModelState.AddModelError(
+                    "Message",
+                    "Lời nhắn tối đa 500 ký tự."
+                );
 
             if (isInKind)
             {
                 if (string.IsNullOrWhiteSpace(ItemName))
-                    ModelState.AddModelError("ItemName", "Vui lòng nhập tên hiện vật.");
+                    ModelState.AddModelError(
+                        "ItemName",
+                        "Vui lòng nhập tên hiện vật."
+                    );
+
                 if (Quantity == null || Quantity <= 0)
-                    ModelState.AddModelError("Quantity", "Số lượng phải lớn hơn 0.");
+                    ModelState.AddModelError(
+                        "Quantity",
+                        "Số lượng phải lớn hơn 0."
+                    );
+
                 if (string.IsNullOrWhiteSpace(Unit))
-                    ModelState.AddModelError("Unit", "Vui lòng nhập đơn vị.");
+                    ModelState.AddModelError(
+                        "Unit",
+                        "Vui lòng nhập đơn vị."
+                    );
+
                 if (string.IsNullOrWhiteSpace(ContactPhone) ||
-                    !Regex.IsMatch(ContactPhone.Trim(), @"^0\d{9,10}$"))
-                    ModelState.AddModelError("ContactPhone", "Số điện thoại không hợp lệ.");
+                    !Regex.IsMatch(
+                        ContactPhone.Trim(),
+                        @"^0\d{9,10}$"))
+                {
+                    ModelState.AddModelError(
+                        "ContactPhone",
+                        "Số điện thoại không hợp lệ."
+                    );
+                }
             }
             else
             {
                 if (Amount == null || Amount <= 0)
-                    ModelState.AddModelError("Amount", "Số tiền phải lớn hơn 0.");
+                    ModelState.AddModelError(
+                        "Amount",
+                        "Số tiền phải lớn hơn 0."
+                    );
             }
 
             if (!ModelState.IsValid)
@@ -573,7 +675,11 @@ namespace Charity.Controllers
             }
 
             database.SaveChanges();
-            TempData["Success"] = "Đã cập nhật khoản quyên góp " + donation.TransactionCode + ".";
+
+            TempData["Success"] =
+                "Đã cập nhật khoản quyên góp " +
+                donation.TransactionCode + ".";
+
             return RedirectToAction("Donations");
         }
 
@@ -632,7 +738,6 @@ namespace Charity.Controllers
             if (donation == null)
                 return HttpNotFound();
 
-            // Chặn xóa giao dịch hợp lệ
             if (donation.Status == 1)
             {
                 TempData["Error"] =
@@ -641,7 +746,6 @@ namespace Charity.Controllers
                 return RedirectToAction("Donations");
             }
 
-            // Chỉ cho xóa trạng thái 0 hoặc 2
             if (donation.Status != 0 && donation.Status != 2)
             {
                 TempData["Error"] =
@@ -650,7 +754,8 @@ namespace Charity.Controllers
                 return RedirectToAction("Donations");
             }
 
-            string transactionCode = donation.TransactionCode;
+            string transactionCode =
+                donation.TransactionCode;
 
             database.Donations.Remove(donation);
             database.SaveChanges();
@@ -759,28 +864,47 @@ namespace Charity.Controllers
         }
 
         // =========================
-        // LƯU FILE ẢNH
+        // ĐỌC ẢNH THÀNH BYTE[]
         // =========================
-        private string SaveCampaignImage(HttpPostedFileBase image)
+        private byte[] ReadCampaignImage(HttpPostedFileBase image)
         {
-            string folderPath =
-                Server.MapPath("~/Content/Images/Campaigns/");
+            if (image == null || image.ContentLength <= 0)
+                return null;
 
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
+            using (var memoryStream = new MemoryStream())
+            {
+                image.InputStream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
 
+        // =========================
+        // LẤY ĐỊNH DẠNG ẢNH
+        // =========================
+        private string GetCampaignImageContentType(
+            HttpPostedFileBase image)
+        {
             string extension =
                 Path.GetExtension(image.FileName).ToLowerInvariant();
 
-            string fileName =
-                Guid.NewGuid().ToString("N") + extension;
+            switch (extension)
+            {
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
 
-            string fullPath =
-                Path.Combine(folderPath, fileName);
+                case ".png":
+                    return "image/png";
 
-            image.SaveAs(fullPath);
+                case ".gif":
+                    return "image/gif";
 
-            return "/Content/Images/Campaigns/" + fileName;
+                case ".webp":
+                    return "image/webp";
+
+                default:
+                    return null;
+            }
         }
 
         // =============================================
@@ -788,8 +912,10 @@ namespace Charity.Controllers
         // =============================================
 
         // GET: Admin/Users
-        
-        public ActionResult Users(string keyword, string role, int page = 1)
+        public ActionResult Users(
+            string keyword,
+            string role,
+            int page = 1)
         {
             if (Session["UserId"] == null ||
                 (Session["Role"] as string) != "Admin")
@@ -818,7 +944,9 @@ namespace Charity.Controllers
 
             if (page < 1) page = 1;
 
-            return View(users.OrderBy(u => u.Id).ToPagedList(page, 10));
+            return View(
+                users.OrderBy(u => u.Id).ToPagedList(page, 10)
+            );
         }
 
         // GET: Admin/DetailsUser/5
@@ -870,7 +998,9 @@ namespace Charity.Controllers
                 string.IsNullOrWhiteSpace(Email) ||
                 string.IsNullOrWhiteSpace(Password))
             {
-                ViewBag.Error = "Vui lòng nhập đầy đủ họ tên, email và mật khẩu.";
+                ViewBag.Error =
+                    "Vui lòng nhập đầy đủ họ tên, email và mật khẩu.";
+
                 return View();
             }
 
@@ -901,7 +1031,9 @@ namespace Charity.Controllers
             database.Users.Add(user);
             database.SaveChanges();
 
-            TempData["Success"] = "Thêm người dùng thành công.";
+            TempData["Success"] =
+                "Thêm người dùng thành công.";
+
             return RedirectToAction("Users");
         }
 
@@ -947,7 +1079,9 @@ namespace Charity.Controllers
             if (string.IsNullOrWhiteSpace(FullName) ||
                 string.IsNullOrWhiteSpace(Email))
             {
-                ViewBag.Error = "Họ tên và email không được để trống.";
+                ViewBag.Error =
+                    "Họ tên và email không được để trống.";
+
                 return View(user);
             }
 
@@ -956,7 +1090,9 @@ namespace Charity.Controllers
             if (database.Users.Any(u =>
                 u.Email == Email && u.Id != Id))
             {
-                ViewBag.Error = "Email này đã được tài khoản khác sử dụng.";
+                ViewBag.Error =
+                    "Email này đã được tài khoản khác sử dụng.";
+
                 return View(user);
             }
 
@@ -974,12 +1110,15 @@ namespace Charity.Controllers
             // Chỉ đổi mật khẩu khi Admin nhập mật khẩu mới.
             if (!string.IsNullOrWhiteSpace(Password))
             {
-                user.PasswordHash = PasswordHelper.Hash(Password);
+                user.PasswordHash =
+                    PasswordHelper.Hash(Password);
             }
 
             database.SaveChanges();
 
-            TempData["Success"] = "Cập nhật người dùng thành công.";
+            TempData["Success"] =
+                "Cập nhật người dùng thành công.";
+
             return RedirectToAction("Users");
         }
 
@@ -1011,11 +1150,14 @@ namespace Charity.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            int currentUserId = Convert.ToInt32(Session["UserId"]);
+            int currentUserId =
+                Convert.ToInt32(Session["UserId"]);
 
             if (id == currentUserId)
             {
-                TempData["Error"] = "Bạn không thể xóa tài khoản đang đăng nhập.";
+                TempData["Error"] =
+                    "Bạn không thể xóa tài khoản đang đăng nhập.";
+
                 return RedirectToAction("Users");
             }
 
@@ -1024,20 +1166,23 @@ namespace Charity.Controllers
             if (user == null)
                 return HttpNotFound();
 
-            if (user.Donations != null && user.Donations.Any())
+            if (user.Donations != null &&
+                user.Donations.Any())
             {
                 TempData["Error"] =
                     "Không thể xóa tài khoản đã có lịch sử quyên góp.";
+
                 return RedirectToAction("Users");
             }
 
             database.Users.Remove(user);
             database.SaveChanges();
 
-            TempData["Success"] = "Xóa người dùng thành công.";
+            TempData["Success"] =
+                "Xóa người dùng thành công.";
+
             return RedirectToAction("Users");
         }
-
 
         // =========================
         // DISPOSE

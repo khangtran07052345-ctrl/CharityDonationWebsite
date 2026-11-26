@@ -1,4 +1,5 @@
-﻿using Charity.Models;
+﻿
+using Charity.Models;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -33,7 +34,11 @@ namespace Charity.Services
                 Id = c.Id,
                 Title = c.Title,
                 Description = c.Description,
+
+                // Tạm thời lấy ImageUrl từ SQL.
+                // Đường dẫn hiển thị sẽ được chuyển qua CampaignImageController.
                 ImageUrl = c.ImageUrl,
+
                 TargetAmount = c.TargetAmount,
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
@@ -47,6 +52,14 @@ namespace Charity.Services
                     .Where(d => d.Status == 1)
                     .Sum(d => (decimal?)d.Amount) ?? 0m
             }).ToList();
+
+            // Chuyển tất cả ảnh sang endpoint lấy ảnh.
+            // Endpoint sẽ tự xử lý ảnh SQL hoặc ảnh cũ trong Content.
+            foreach (var campaign in list)
+            {
+                campaign.ImageUrl =
+                    "/CampaignImage/Show/" + campaign.Id;
+            }
 
             // Lọc theo trạng thái đã được tính trong CampaignViewModel
             if (!string.IsNullOrWhiteSpace(status))

@@ -30,6 +30,8 @@ namespace Charity.Models
         public Nullable<int> Status { get; set; }
         public string ImageUrl { get; set; }
         public Nullable<System.DateTime> CreatedAt { get; set; }
+        public byte[] ImageData { get; set; }
+        public string ImageContentType { get; set; }
     
         public virtual Category Category { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
